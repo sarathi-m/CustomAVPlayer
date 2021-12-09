@@ -13,11 +13,13 @@ let videoUrl = "https://devstreaming-cdn.apple.com/videos/streaming/examples/bip
 class ViewController: UIViewController, PlayerDelegate {
 
     @IBOutlet weak var playerView: CustomAVPlayerView!
+    
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
+        
         setupCustomAVPlayerView()
     }
     

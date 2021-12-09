@@ -9,13 +9,13 @@ import Foundation
 import AVFoundation
 import UIKit
 
-protocol PlayerDelegate: AnyObject {
+@objc protocol PlayerDelegate: AnyObject {
     func playStarted()
     func playFinished()
     func halfSecondPeriodicObserver(time: CMTime)
 }
 
-let timeScale = CMTimeScale(NSEC_PER_SEC)
+private let TIME_SCALE = CMTimeScale(NSEC_PER_SEC)
 
 class CustomAVPlayerView: UIView {
     
@@ -37,15 +37,12 @@ class CustomAVPlayerView: UIView {
     }
     
     private var playerItemContext = 0
-
     private var playerItem: AVPlayerItem?
-    
     private var timeObserverToken: Any?
+    private var seekTo: Int64?
 
     weak var delegate: PlayerDelegate?
 
-    private var seekTo: Int64?
-    
     //MARK: AVPlayer Methods
     func play(with url: URL, seekToSeconds: Int64? = nil) {
         setUpPlayerItem(with: url)
@@ -67,7 +64,7 @@ class CustomAVPlayerView: UIView {
 
     private func setupPlayer(playerItem: AVPlayerItem?) {
         player = AVPlayer(playerItem: playerItem!)
-        let time = CMTime(seconds: 0.5, preferredTimescale: timeScale)
+        let time = CMTime(seconds: 0.5, preferredTimescale: TIME_SCALE)
         
         timeObserverToken = player?.addPeriodicTimeObserver(forInterval: time, queue: .main) { [weak self] time in
             self?.delegate?.halfSecondPeriodicObserver(time: time)
@@ -76,12 +73,15 @@ class CustomAVPlayerView: UIView {
     
     //MARK: Observer Methods
     private func setupObserver(for playerItem: AVPlayerItem?) {
+        
         playerItem?.addObserver(self, forKeyPath: #keyPath(AVPlayerItem.status), options: [.old, .new], context: &playerItemContext)
         playerItem?.addObserver(self, forKeyPath:  #keyPath(AVPlayerItem.timebase), options: [.old, .new], context: &playerItemContext)
+        
         NotificationCenter.default.addObserver(self, selector: #selector(playerDidFinish(_:)), name: .AVPlayerItemDidPlayToEndTime, object: playerItem)
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        
         guard context == &playerItemContext else {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
             return
@@ -95,17 +95,17 @@ class CustomAVPlayerView: UIView {
                 status = .unknown
             }
             switch status {
-            case .readyToPlay:
-                player?.play()
-                
-                //Seek to last to check finished play
-                if let time = seekTo {
-                    player?.seek(to: CMTimeMake(value: time, timescale: 1))
-                }
-            case .failed, .unknown:
-                print(status)
-            default:
-                print("default")
+                case .readyToPlay:
+                    player?.play()
+                    
+                    //Seek to last to check finished play
+                    if let time = seekTo {
+                        player?.seek(to: CMTimeMake(value: time, timescale: 1))
+                    }
+                case .failed, .unknown:
+                    print(status)
+                default:
+                    print("default")
             }
         } else if keyPath == #keyPath(AVPlayerItem.timebase) {
             if let rate = player?.rate, rate > 0 {
@@ -114,7 +114,7 @@ class CustomAVPlayerView: UIView {
         }
     }
     
-    @objc func playerDidFinish(_ notification: Notification) {
+    @objc private func playerDidFinish(_ notification: Notification) {
         delegate?.playFinished()
      }
     
